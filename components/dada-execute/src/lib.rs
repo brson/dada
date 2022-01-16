@@ -23,7 +23,7 @@ mod error;
 mod execute;
 mod ext;
 pub mod heap_graph;
-mod interpreter;
+pub mod interpreter;
 mod intrinsic;
 pub mod kernel;
 mod moment;

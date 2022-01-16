@@ -5,7 +5,7 @@ use parking_lot::Mutex;
 
 use crate::{kernel::Kernel, moment::Moment};
 
-pub(crate) struct Interpreter<'me> {
+pub struct Interpreter<'me> {
     db: &'me dyn crate::Db,
 
     kernel: &'me dyn Kernel,
@@ -23,7 +23,7 @@ pub(crate) struct Interpreter<'me> {
 }
 
 impl<'me> Interpreter<'me> {
-    pub(crate) fn new(
+    pub fn new(
         db: &'me dyn crate::Db,
         kernel: &'me dyn Kernel,
         start_span: FileSpan,

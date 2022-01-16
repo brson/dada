@@ -56,6 +56,35 @@ impl Parser<'_> {
         };
         Tree::new(self.db, origin, tree_data, spans)
     }
+
+    pub(crate) fn parse_repl_expr(&mut self, token_tree: TokenTree) -> Option<Tree> {
+        let mut tables = Tables::default();
+        let mut spans = Spans::default();
+
+        let mut code_parser = CodeParser {
+            parser: self,
+            tables: &mut tables,
+            spans: &mut spans,
+        };
+
+        let block = code_parser.parse_expr();
+        if let Some(block) = block {
+            use dada_ir::effect::Effect;
+            let origin = Code {
+                effect: Effect::Default,
+                parameter_tokens: None,
+                body_tokens: token_tree,
+            };
+            let tree_data = TreeData {
+                tables,
+                parameter_decls: vec![],
+                root_expr: block,
+            };
+            Some(Tree::new(self.db, origin, tree_data, spans))
+        } else {
+            None
+        }
+    }
 }
 
 struct CodeParser<'me, 'db> {
