@@ -353,7 +353,13 @@ impl CodeParser<'_, '_> {
         } else if let Some((span, token_tree)) = self.delimited('(') {
             let expr =
                 self.with_sub_parser(token_tree, |subparser| subparser.parse_only_expr_seq());
-            Some(self.add(ExprData::Tuple(expr), span))
+            if expr.len() != 1 {
+                // NB: A 0-tuple will become a unit expression during brew
+                Some(self.add(ExprData::Tuple(expr), span))
+            } else {
+                let expr = expr.into_iter().next().unwrap();
+                Some(self.add(ExprData::Parenthesized(expr), span))
+            }
         } else {
             None
         }
