@@ -1,0 +1,112 @@
+%start Items
+%line_comment "#"
+
+%%
+
+Items : { Item };
+
+Item : Class
+     | Function;
+
+Class : "class" Identifier FieldList;
+
+FieldList : "\(" "\)"
+          | "\(" Field { [ "," ] Field } "\)";
+
+Field : [ StorageMode ] Identifier;
+
+StorageMode : "atomic";
+
+Function : [ Effect ] "fn" Identifier ArgumentList FunctionBody;
+
+Effect : "async";
+
+ArgumentList : "\(" "\)"
+             | "\(" Identifier { "," Identifier } "\)";
+
+FunctionBody : "\{" { Expr } MaybeReturnWithoutExpr "\}";
+
+
+/*** everything after this is expressions ***/
+
+Expr : LocalVariable
+     | ReturnWithExpr
+     | Expr5;
+
+ReturnWithExpr : "return" Expr;
+ReturnWithoutExpr : "return";
+MaybeReturnWithoutExpr : [ ReturnWithoutExpr ];
+
+Expr5 : Expr4 { ( "\+=" | "-=" | "/=" | "\*=" | ":=" ) Expr4 };
+
+Expr4 : Expr3 { ( "==" | "<" | ">" ) Expr3 };
+
+Expr3 : Expr2 { ( "\+" | "-" ) Expr2 };
+
+Expr2 : Expr1 { ( "/" | "\*" ) Expr1 };
+
+Expr1 : Expr0 { ( DotExpr | CallArgumentList ) };
+
+DotExpr : "\." DotSuffix;
+
+DotSuffix : "await"
+          | "share"
+          | "give"
+          | "lease"
+          | Identifier;
+
+CallArgumentList : "\(" "\)"
+                 | "\(" CallArgument { "," CallArgument } MaybeTrailingComma "\)";
+
+MaybeTrailingComma : [ "," ];
+
+CallArgument : [ Identifier ":" ] Expr;
+
+Expr0 : Identifier
+      | BooleanLiteral
+      | FloatLiteral
+      | IntegerLiteral
+      | StringLiteral
+      | BlockExpr
+      | AtomicBlock
+      | IfExpr
+      | Loop
+      | While
+      | Tuple;
+
+BooleanLiteral : "true" | "false";
+
+Identifier : "[a-z|A-Z_][a-z|A-Z|0-9_]*";
+
+// Must be ordered before IntegerLiteral
+FloatLiteral : "[0-9][0-9_]*\.[0-9][0-9_]*";
+
+IntegerLiteral : "[0-9][0-9_]*";
+
+// `(?s:[^\u{0022}]*)` matches any character including newlines,
+// as long is it doesn't contain a quote.
+// For some reason we need `\u{0022}` to indicate double
+// quotes - `\"` doesn't work.
+StringLiteral : "\u{0022}(?s:[^\u{0022}]*)\u{0022}";
+
+BlockExpr : "\{" { Expr } MaybeReturnWithoutExpr "\}";
+
+AtomicBlock : "atomic" BlockExpr;
+
+IfExpr : "if" Condition "\{" { Expr } ( "\}" | "\}" "else" "\{" { Expr } "\}" );
+
+// fixme production grammar doesn't allow "{"
+Condition: Expr;
+
+Loop: "loop" BlockExpr;
+
+While: "while" Condition BlockExpr;
+
+// fixme ambiguous see https://github.com/dada-lang/dada/issues/117
+//Tuple : "\(" "\)"
+//      | "\(" Expr "," Expr { "," Expr } "\)";
+Tuple: "tuple";
+
+// This must be ordered after various other productions so they will be chosen first
+LocalVariable : [ StorageMode ] Identifier "=" Expr;
+

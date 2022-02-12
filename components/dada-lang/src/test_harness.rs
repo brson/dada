@@ -163,10 +163,22 @@ impl Options {
         let contents = std::fs::read_to_string(&source_path)
             .with_context(|| format!("reading `{}`", &source_path.display()))?;
         let filename = dada_ir::filename::Filename::from(&db, &source_path);
-        db.update_file(filename, contents);
-        let diagnostics = db.diagnostics(filename);
+        db.update_file(filename, contents.clone());
 
         let mut errors = Errors::default();
+
+        let parse_diagnostics = db.parse_diagnostics(filename);
+        
+        self.check_reference_grammar(
+            &db,
+            &source_path,
+            &contents,
+            &parse_diagnostics,
+            &mut errors,
+        )?;
+
+        let diagnostics = db.diagnostics(filename);
+
         self.match_diagnostics_against_expectations(
             &db,
             &diagnostics,
@@ -209,7 +221,7 @@ impl Options {
             &mut errors,
         )
         .await?;
-
+        
         for (query, query_index) in expected_queries.iter().zip(0..) {
             self.perform_query_on_db(&mut db, path, filename, query, query_index, &mut errors)
                 .await?;
@@ -503,6 +515,37 @@ impl Options {
 
         Ok(())
     }
+
+    /// Checks that the production parser and reference grammar accept the same
+    /// programs.
+    fn check_reference_grammar<D>(
+        &self,
+        db: &dada_db::Db,
+        filename: &Path,
+        contents: &str,
+        actual_diagnostics: &[D],
+        errors: &mut Errors)
+        -> eyre::Result<()>
+    where
+        D: ActualDiagnostic<Db = dada_db::Db> {
+
+        let actual_errors = actual_diagnostics.iter().filter(|d| d.severity(db) == "ERROR").collect::<Vec<_>>();
+        let reference_result = dada_reference_grammar::try_accept(filename, contents);
+
+        let have_actual_parse_errors = !actual_errors.is_empty();
+        let have_reference_parse_errors = reference_result.is_err();
+
+        let actual_diagnostic_strings = actual_errors.iter().map(|d| d.summary(&db)).collect::<Vec<_>>();
+
+        if have_actual_parse_errors != have_reference_parse_errors {
+            errors.push(ReferenceGrammarMismatch {
+                actual: format!("{:#?}", actual_diagnostic_strings),
+                reference: format!("{:#?}", reference_result),
+            })
+        }
+
+        Ok(())
+    }
 }
 
 #[derive(Debug, Default)]
@@ -640,6 +683,25 @@ impl std::fmt::Display for RefOutputDoesNotMatch {
             similar::TextDiff::from_lines(&self.expected, &self.actual)
                 .unified_diff()
                 .header(&self.ref_path.display().to_string(), "actual output")
+        )
+    }
+}
+
+#[derive(Debug)]
+struct ReferenceGrammarMismatch {
+    actual: String,
+    reference: String,
+}
+
+impl std::error::Error for ReferenceGrammarMismatch {}
+
+impl std::fmt::Display for ReferenceGrammarMismatch {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "production: {}\nreference: {}",
+            self.actual,
+            self.reference
         )
     }
 }

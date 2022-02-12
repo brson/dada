@@ -4,7 +4,10 @@
 mod check;
 
 #[salsa::jar(Db)]
-pub struct Jar(check::check_filename);
+pub struct Jar(
+    check::check_filename,
+    check::check_parse_filename,
+);
 
 pub trait Db:
     salsa::DbWithJar<Jar>
@@ -27,3 +30,4 @@ impl<T> Db for T where
 }
 
 pub use check::check_filename;
+pub use check::check_parse_filename;

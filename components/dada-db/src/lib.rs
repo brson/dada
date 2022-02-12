@@ -60,6 +60,10 @@ impl Db {
         dada_check::check_filename::accumulated::<dada_ir::diagnostic::Diagnostics>(self, filename)
     }
 
+    pub fn parse_diagnostics(&self, filename: Filename) -> Vec<Diagnostic> {
+        dada_check::check_parse_filename::accumulated::<dada_ir::diagnostic::Diagnostics>(self, filename)
+    }
+
     /// Checks `filename` for a "main" function
     pub fn function_named(&self, filename: Filename, name: &str) -> Option<Function> {
         let name = Word::from(self, name);

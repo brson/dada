@@ -2,6 +2,8 @@ use structopt::StructOpt;
 use tracing_subscriber::{prelude::*, EnvFilter};
 
 mod deploy;
+mod grammar;
+mod utils;
 
 fn main() -> eyre::Result<()> {
     Options::from_args().main()
@@ -19,6 +21,7 @@ pub struct Options {
 #[derive(StructOpt)]
 pub enum Command {
     Deploy(deploy::Deploy),
+    Grammar(grammar::Grammar),
 }
 
 impl Options {
@@ -46,6 +49,7 @@ impl Options {
 
         match &self.command {
             Command::Deploy(c) => c.main(),
+            Command::Grammar(c) => c.main(),
         }
     }
 }

@@ -1,3 +1,4 @@
+use crate::utils;
 use std::path::{Path, PathBuf};
 use structopt::StructOpt;
 
@@ -6,7 +7,7 @@ pub struct Deploy {}
 
 impl Deploy {
     pub fn main(&self) -> eyre::Result<()> {
-        let xtask_dir = cargo_path("CARGO_MANIFEST_DIR")?;
+        let xtask_dir = utils::cargo_path("CARGO_MANIFEST_DIR")?;
         let manifest_dir = xtask_dir.parent().unwrap().parent().unwrap();
         tracing::debug!("manifest directory: {manifest_dir:?}");
         let book_dir = manifest_dir.join("book");
@@ -82,16 +83,6 @@ fn download_and_untar(dada_downloads: &Path, url: &str, file: &str) -> eyre::Res
         tracing::debug!("file already exists");
     }
     Ok(())
-}
-
-fn cargo_path(env_var: &str) -> eyre::Result<PathBuf> {
-    match std::env::var(env_var) {
-        Ok(s) => {
-            tracing::debug!("cargo_path({env_var}) = {s}");
-            Ok(PathBuf::from(s))
-        }
-        Err(_) => eyre::bail!("`{}` not set", env_var),
-    }
 }
 
 fn copy_all_files(source_dir: &Path, subdir: &str, target_dir: &Path) -> eyre::Result<()> {

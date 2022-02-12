@@ -3,6 +3,23 @@ use dada_parse::prelude::*;
 use dada_validate::prelude::*;
 
 #[salsa::memoized(in crate::Jar)]
+pub fn check_parse_filename(db: &dyn crate::Db, filename: Filename) {
+    let items = filename.items(db);
+
+    for &item in items {
+        match item {
+            Item::Function(function) => {
+                function.parameters(db);
+                function.syntax_tree(db);
+            }
+            Item::Class(class) => {
+                class.fields(db);
+            }
+        }
+    }
+}
+
+#[salsa::memoized(in crate::Jar)]
 pub fn check_filename(db: &dyn crate::Db, filename: Filename) {
     let items = filename.items(db);
 

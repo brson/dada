@@ -14,6 +14,7 @@ dada-ir = { path = "../dada-ir" }
 dada-error-format = { path = "../dada-error-format" }
 dada-execute = { path = "../dada-execute" }
 dada-parse = { path = "../dada-parse" }
+dada-reference-grammar = { path = "../dada-reference-grammar" }
 dada-lex = { path = "../dada-lex" }
 dada-lsp = { path = "../dada-lsp" }
 ignore = "0.4.18"
