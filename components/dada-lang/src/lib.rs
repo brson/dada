@@ -1,5 +1,6 @@
 #![feature(trait_upcasting)]
 #![feature(try_blocks)]
+#![feature(cell_update)]
 #![allow(incomplete_features)]
 // Per rust-lang/rust-clippy#8574, gives false warnings.
 // Also see rust-lang/rust-clippy#9522.

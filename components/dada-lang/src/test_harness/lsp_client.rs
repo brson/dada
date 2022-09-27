@@ -12,6 +12,7 @@ use std::sync::Arc;
 #[derive(Clone)]
 pub(crate) struct ChildSession {
     child: Arc<Mutex<std::process::Child>>,
+    tx_lock: Arc<Mutex<()>>,
 }
 
 impl Drop for ChildSession {
@@ -33,8 +34,9 @@ impl ChildSession {
             .spawn()
             .expect("Failed to spawn child process");
         let child = Arc::new(Mutex::new(child));
+        let tx_lock = Arc::new(Mutex::new(()));
 
-        ChildSession { child }
+        ChildSession { child, tx_lock }
     }
     /// Helper function to do the work of sending a result back to the IDE
     fn send_notification<T: lsp_types::notification::Notification>(
@@ -82,6 +84,7 @@ impl ChildSession {
         child_stdin
             .write_all(msg_raw.as_bytes())
             .expect("Failed to write to stdin");
+        let _ = child_stdin.flush();
         //let _ = io::stdout().flush();
 
         Ok(())
@@ -97,6 +100,7 @@ impl ChildSession {
 
     fn receive<T: for<'de> Deserialize<'de>>(&self) -> eyre::Result<T> {
         let mut child = self.child.lock().expect("poison");
+        println!("childlock");
         let child_stdout = child.stdout.as_mut().ok_or_else(|| {
             std::io::Error::new(
                 std::io::ErrorKind::BrokenPipe,
@@ -106,6 +110,7 @@ impl ChildSession {
 
         let mut buffer = [0; 16];
         child_stdout.read_exact(&mut buffer[..])?;
+        println!("bleh");
 
         let mut digits = String::new();
         let mut digit = [0; 1];
@@ -161,7 +166,7 @@ impl ChildSession {
         Ok(())
     }
 
-    pub fn send_open(&self, filepath: &Path) -> eyre::Result<()> {
+    fn send_open(&self, filepath: &Path) -> eyre::Result<()> {
         let contents = std::fs::read_to_string(filepath)?;
         let path = std::path::Path::new(filepath).canonicalize()?;
 
@@ -181,9 +186,19 @@ impl ChildSession {
         })
     }
 
-    pub fn receive_errors(&self) -> eyre::Result<Vec<Diagnostic>> {
+    fn receive_errors(&self) -> eyre::Result<Vec<Diagnostic>> {
         let result = self.receive_notification::<PublishDiagnostics>()?;
         Ok(result.diagnostics)
+    }
+
+    pub fn send_open_and_receive_errors(&self, filepath: &Path) -> eyre::Result<Vec<Diagnostic>> {
+        let _lock = self.tx_lock.lock().expect("poison");
+        println!("a");
+        self.send_open(filepath)?;
+        println!("b");
+        let r = self.receive_errors();
+        println!("c");
+        r
     }
 }
 

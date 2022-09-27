@@ -43,8 +43,14 @@ impl salsa::ParallelDatabase for Db {
 
 impl Db {
     pub fn new_input_file(&mut self, name: impl ToString, source_text: String) -> InputFile {
+        let name = name.to_string();
+        let name2 = name.clone();
+        eprintln!("poo {}", name);
         let name = Word::intern(self, name);
-        InputFile::new(self, name, source_text, vec![])
+        eprintln!("poo2 {}", name2);
+        let r = InputFile::new(self, name, source_text, vec![]);
+        eprintln!("poo3 {}", name2);
+        r
     }
 
     /// Set the breakpoints within the given file where the interpreter stops and executes callbacks.

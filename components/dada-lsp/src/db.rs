@@ -34,9 +34,12 @@ impl LspServerDatabase {
     }
 
     pub fn did_open(&mut self, params: DidOpenTextDocumentParams) {
+        eprintln!("-a");
         let input_file = self.input_file_from_uri(&params.text_document.uri);
+        eprintln!("-b");
         let source_text = params.text_document.text;
         input_file.set_source_text(&mut self.db, source_text);
+        eprintln!("-c");
         self.spawn_check(
             params.text_document.uri,
             params.text_document.version,
@@ -58,9 +61,11 @@ impl LspServerDatabase {
     }
 
     fn spawn_check(&self, uri: Url, version: i32, input_file: InputFile) {
+        eprintln!("sa");
         let sender = self.sender.clone();
         let db = self.db.snapshot();
         self.threads.execute(move || {
+            eprintln!("sb");
             let dada_diagnostics = db.diagnostics(input_file);
             let diagnostics: Vec<_> = dada_diagnostics
                 .into_iter()
@@ -75,6 +80,7 @@ impl LspServerDatabase {
 
             let notification = super::new_notification::<PublishDiagnostics>(diagnostic);
             sender.send(Message::Notification(notification)).unwrap();
+            eprintln!("sc");
         });
     }
 }

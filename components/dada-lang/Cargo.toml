@@ -16,6 +16,7 @@ dada-execute = { path = "../dada-execute" }
 dada-parse = { path = "../dada-parse" }
 dada-lex = { path = "../dada-lex" }
 dada-lsp = { path = "../dada-lsp" }
+futures = "0.3.24"
 ignore = "0.4.18"
 lsp-server = "0.6.0"
 lsp-types = "0.93.0"

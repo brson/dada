@@ -57,6 +57,8 @@ impl LspServer {
 
     pub fn main_loop(&mut self) -> eyre::Result<()> {
         for msg in &self.connection.receiver {
+            eprintln!("foo");
+            eprintln!("{msg:?}");
             match msg {
                 Message::Request(req) => {
                     if self.connection.handle_shutdown(&req)? {
