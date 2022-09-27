@@ -35,7 +35,7 @@ impl ChildSession {
     }
     /// Helper function to do the work of sending a result back to the IDE
     fn send_notification<T: lsp_types::notification::Notification>(
-        &mut self,
+        &self,
         params: T::Params,
     ) -> eyre::Result<()> {
         let msg = Notification {
@@ -47,7 +47,7 @@ impl ChildSession {
     }
 
     fn send_request<T: lsp_types::request::Request>(
-        &mut self,
+        &self,
         id: RequestId,
         params: T::Params,
     ) -> eyre::Result<T::Result> {
@@ -65,7 +65,7 @@ impl ChildSession {
         Ok(response.result)
     }
 
-    fn send_any(&mut self, msg: impl Serialize) -> eyre::Result<()> {
+    fn send_any(&self, msg: impl Serialize) -> eyre::Result<()> {
         let msg_raw = serde_json::to_string(&msg)?;
 
         let mut child = self.child.lock().expect("poison");
@@ -85,14 +85,14 @@ impl ChildSession {
     }
 
     fn receive_notification<T: lsp_types::notification::Notification>(
-        &mut self,
+        &self,
     ) -> eyre::Result<T::Params> {
         let msg: Notification = self.receive()?;
         assert_eq!(msg.method, T::METHOD);
         Ok(serde_json::from_value(msg.params)?)
     }
 
-    fn receive<T: for<'de> Deserialize<'de>>(&mut self) -> eyre::Result<T> {
+    fn receive<T: for<'de> Deserialize<'de>>(&self) -> eyre::Result<T> {
         let mut child = self.child.lock().expect("poison");
         let child_stdout = child.stdout.as_mut().ok_or_else(|| {
             std::io::Error::new(
@@ -129,7 +129,7 @@ impl ChildSession {
     }
 
     #[allow(deprecated)]
-    pub fn send_init(&mut self) -> eyre::Result<()> {
+    pub fn send_init(&self) -> eyre::Result<()> {
         self.send_request::<Initialize>(
             serde_json::from_str("22")?,
             lsp_types::InitializeParams {
@@ -158,7 +158,7 @@ impl ChildSession {
         Ok(())
     }
 
-    pub fn send_open(&mut self, filepath: &Path) -> eyre::Result<()> {
+    pub fn send_open(&self, filepath: &Path) -> eyre::Result<()> {
         let contents = std::fs::read_to_string(filepath)?;
         let path = std::path::Path::new(filepath).canonicalize()?;
 
@@ -178,7 +178,7 @@ impl ChildSession {
         })
     }
 
-    pub fn receive_errors(&mut self) -> eyre::Result<Vec<Diagnostic>> {
+    pub fn receive_errors(&self) -> eyre::Result<Vec<Diagnostic>> {
         let result = self.receive_notification::<PublishDiagnostics>()?;
         Ok(result.diagnostics)
     }
