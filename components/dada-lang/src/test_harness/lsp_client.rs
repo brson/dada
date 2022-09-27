@@ -9,6 +9,7 @@ use std::process::{Command, Stdio};
 use std::sync::Mutex;
 use std::sync::Arc;
 
+#[derive(Clone)]
 pub(crate) struct ChildSession {
     child: Arc<Mutex<std::process::Child>>,
 }
