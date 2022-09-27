@@ -16,8 +16,10 @@ pub(crate) struct ChildSession {
 
 impl Drop for ChildSession {
     fn drop(&mut self) {
-        let mut child = self.child.lock().expect("poison");
-        let _ = child.kill();
+        if Arc::strong_count(&self.child) == 1 {
+            let mut child = self.child.lock().expect("poison");
+            let _ = child.kill();
+        }
     }
 }
 

@@ -14,6 +14,7 @@ mod heap_graph_query;
 mod lsp_client;
 
 #[derive(structopt::StructOpt)]
+#[derive(Clone)]
 pub struct Options {
     /// Paths to directories and/or `.dada` files to test
     #[structopt(parse(from_os_str), default_value = "dada_tests")]
@@ -34,7 +35,7 @@ impl Options {
             eyre::bail!("no test paths given; try --dada-path");
         }
 
-        let mut lsp_client = lsp_client::ChildSession::spawn();
+        let lsp_client = lsp_client::ChildSession::spawn();
         lsp_client.send_init()?;
 
         const REF_EXTENSIONS: &[&str] = &["ref", "lsp", "bir", "validated", "syntax", "stdout"];
@@ -53,8 +54,8 @@ impl Options {
                         if ext == "dada" {
                             total += 1;
                             let fixmes = self
-                                .test_dada_file(&mut lsp_client, path)
-                                .await
+                                .test_dada_file(&lsp_client, path)
+                                .await.await?
                                 .with_context(|| format!("testing `{}`", path.display()))?;
 
                             if fixmes.is_empty() {
@@ -135,21 +136,29 @@ impl Options {
     #[tracing::instrument(level = "debug", skip(self, lsp_client))]
     async fn test_dada_file(
         &self,
-        lsp_client: &mut lsp_client::ChildSession,
+        lsp_client: &lsp_client::ChildSession,
         path: &Path,
-    ) -> eyre::Result<Vec<String>> {
-        let expected_queries = &expected_queries(path)?;
-        let expected_diagnostics = expected_diagnostics(path)?;
-        let path_without_extension = path.with_extension("");
-        fs::create_dir_all(&path_without_extension)?;
-        self.test_dada_file_normal(
-            &path_without_extension,
-            &expected_diagnostics,
-            expected_queries,
-        )
-        .await?;
-        self.test_dada_file_in_ide(lsp_client, &path_without_extension, &expected_diagnostics)?;
-        Ok(expected_diagnostics.fixmes)
+    ) -> tokio::task::JoinHandle<eyre::Result<Vec<String>>> {
+        let lsp_client = lsp_client.clone();
+        let path = path.to_owned();
+        let this = self.clone();
+        tokio::task::spawn_blocking(move || {
+            let rt = tokio::runtime::Builder::new_current_thread().build()?;
+            rt.block_on(async {
+                let expected_queries = &expected_queries(&path)?;
+                let expected_diagnostics = expected_diagnostics(&path)?;
+                let path_without_extension = path.with_extension("");
+                fs::create_dir_all(&path_without_extension)?;
+                this.test_dada_file_normal(
+                    &path_without_extension,
+                    &expected_diagnostics,
+                    expected_queries,
+                )
+                    .await?;
+                this.test_dada_file_in_ide(&lsp_client, &path_without_extension, &expected_diagnostics)?;
+                Ok(expected_diagnostics.fixmes)
+            })
+        })
     }
 
     #[tracing::instrument(level = "debug", skip(self))]
@@ -221,7 +230,7 @@ impl Options {
     #[tracing::instrument(level = "debug", skip(self, lsp_client))]
     fn test_dada_file_in_ide(
         &self,
-        lsp_client: &mut lsp_client::ChildSession,
+        lsp_client: &lsp_client::ChildSession,
         path: &Path,
         expected_diagnostics: &ExpectedDiagnostics,
     ) -> eyre::Result<()> {
