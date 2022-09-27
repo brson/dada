@@ -6,13 +6,17 @@ use serde::{Deserialize, Serialize};
 use std::io::{Read, Write};
 use std::path::Path;
 use std::process::{Command, Stdio};
+use std::sync::Mutex;
+use std::sync::Arc;
+
 pub(crate) struct ChildSession {
-    child: std::process::Child,
+    child: Arc<Mutex<std::process::Child>>,
 }
 
 impl Drop for ChildSession {
     fn drop(&mut self) {
-        let _ = self.child.kill();
+        let mut child = self.child.lock().expect("poison");
+        let _ = child.kill();
     }
 }
 
@@ -25,6 +29,7 @@ impl ChildSession {
             .stdout(Stdio::piped())
             .spawn()
             .expect("Failed to spawn child process");
+        let child = Arc::new(Mutex::new(child));
 
         ChildSession { child }
     }
@@ -63,7 +68,8 @@ impl ChildSession {
     fn send_any(&mut self, msg: impl Serialize) -> eyre::Result<()> {
         let msg_raw = serde_json::to_string(&msg)?;
 
-        let child_stdin = self.child.stdin.as_mut().ok_or_else(|| {
+        let mut child = self.child.lock().expect("poison");
+        let child_stdin = child.stdin.as_mut().ok_or_else(|| {
             std::io::Error::new(std::io::ErrorKind::BrokenPipe, "can connect to child stdin")
         })?;
 
@@ -87,7 +93,8 @@ impl ChildSession {
     }
 
     fn receive<T: for<'de> Deserialize<'de>>(&mut self) -> eyre::Result<T> {
-        let child_stdout = self.child.stdout.as_mut().ok_or_else(|| {
+        let mut child = self.child.lock().expect("poison");
+        let child_stdout = child.stdout.as_mut().ok_or_else(|| {
             std::io::Error::new(
                 std::io::ErrorKind::BrokenPipe,
                 "can connect to child stdout",
