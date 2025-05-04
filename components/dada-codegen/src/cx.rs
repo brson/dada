@@ -75,8 +75,8 @@ impl<'db> Cx<'db> {
 
         let mut component = Component::new();
 
-        let code_module_section = ModuleSection(&code_module);
-        component.section(&code_module_section);
+        let core_module_section = ModuleSection(&core_module);
+        component.section(&core_module_section);
 
         let mut types = ComponentTypeSection::new();
         component.section(&types);
