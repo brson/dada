@@ -34,6 +34,6 @@ pub fn codegen<'db>(
     generics: Vec<SymGenericTerm<'db>>,
 ) -> Vec<u8> {
     cx::Cx::new(db)
-        .generate_from_fn(function, generics)
+        .generate_component_from_fn(function, generics)
         .finish()
 }

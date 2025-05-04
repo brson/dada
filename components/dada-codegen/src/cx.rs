@@ -4,6 +4,8 @@ use salsa::Update;
 use wasm_encoder::{CodeSection, ExportKind, ExportSection, FunctionSection, TypeSection};
 use wasm_encoder::{
     ComponentTypeSection,
+    Component,
+    ModuleSection,
 };
 
 mod generate_expr;
@@ -67,23 +69,16 @@ impl<'db> Cx<'db> {
         function: SymFunction<'db>,
         generics: Vec<SymGenericTerm<'db>>,
     ) -> wasm_encoder::Component {
-        let index = self.declare_fn(function, generics);
-        while let Some(item) = self.codegen_queue.pop() {
-            match item {
-                CodegenQueueItem::Function(fn_key) => self.codegen_fn(fn_key),
-            }
-        }
+        let code_module = self.generate_from_fn(function, generics);
 
-        let name = function.name(self.db).text(self.db);
-        self.export_section.export(name, ExportKind::Func, index.0);
+        let mut component = Component::new();
 
-        let mut module = wasm_encoder::Module::new();
-        module.section(&self.type_section);
-        module.section(&self.function_section);
-        module.section(&self.export_section);
-        module.section(&self.code_section);
+        component.section(&ModuleSection(&code_module));
 
-        module
+        let mut types = ComponentTypeSection::new();
+        component.section(&types);
+
+        component
     }
 }
 
