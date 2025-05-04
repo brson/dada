@@ -6,6 +6,7 @@ use wasm_encoder::{
     ComponentTypeSection,
     Component,
     ModuleSection,
+    ComponentExportSection,
 };
 
 mod generate_expr;
@@ -64,6 +65,7 @@ impl<'db> Cx<'db> {
         module
     }
 
+    #[allow(unused)]
     pub fn generate_component_from_fn(
         mut self,
         function: SymFunction<'db>,
@@ -73,10 +75,14 @@ impl<'db> Cx<'db> {
 
         let mut component = Component::new();
 
-        component.section(&ModuleSection(&code_module));
+        let code_module_section = ModuleSection(&code_module);
+        component.section(&code_module_section);
 
         let mut types = ComponentTypeSection::new();
         component.section(&types);
+
+        let mut exports = ComponentExportSection::new();
+        component.section(&exports);
 
         component
     }
