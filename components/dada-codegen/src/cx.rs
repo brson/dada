@@ -7,6 +7,7 @@ use wasm_encoder::{
     Component,
     ModuleSection,
     ComponentExportSection,
+    ComponentExportKind,
 };
 
 mod generate_expr;
@@ -71,7 +72,7 @@ impl<'db> Cx<'db> {
         function: SymFunction<'db>,
         generics: Vec<SymGenericTerm<'db>>,
     ) -> wasm_encoder::Component {
-        let code_module = self.generate_from_fn(function, generics);
+        let core_module = self.generate_from_fn(function, generics);
 
         let mut component = Component::new();
 
@@ -82,6 +83,9 @@ impl<'db> Cx<'db> {
         component.section(&types);
 
         let mut exports = ComponentExportSection::new();
+        exports.export("run", ComponentExportKind::Func, 0, None);
+
+
         component.section(&exports);
 
         component
