@@ -25,7 +25,8 @@ pub(crate) struct Cx<'db> {
     functions: Map<FnKey<'db>, FnIndex>,
     codegen_queue: Vec<CodegenQueueItem<'db>>,
 
-
+    component_type_section: ComponentTypeSection,
+    component_export_section: ComponentExportSection,
 }
 
 impl<'db> Cx<'db> {
@@ -38,12 +39,14 @@ impl<'db> Cx<'db> {
             export_section: Default::default(),
             functions: Default::default(),
             codegen_queue: Default::default(),
+            component_type_section: Default::default(),
+            component_export_section: Default::default(),
         }
     }
 
     /// Generates all code reachable from the given fn instantiated with the given arguments.
-    pub fn generate_from_fn(
-        mut self,
+    fn generate_module_from_fn(
+        &mut self,
         function: SymFunction<'db>,
         generics: Vec<SymGenericTerm<'db>>,
     ) -> wasm_encoder::Module {
@@ -56,6 +59,7 @@ impl<'db> Cx<'db> {
 
         let name = function.name(self.db).text(self.db);
         self.export_section.export(name, ExportKind::Func, index.0);
+        self.component_export_section.export(name, ComponentExportKind::Func, index.0, None);
 
         let mut module = wasm_encoder::Module::new();
         module.section(&self.type_section);
@@ -72,21 +76,15 @@ impl<'db> Cx<'db> {
         function: SymFunction<'db>,
         generics: Vec<SymGenericTerm<'db>>,
     ) -> wasm_encoder::Component {
-        let core_module = self.generate_from_fn(function, generics);
+        let core_module = self.generate_module_from_fn(function, generics);
 
         let mut component = Component::new();
 
         let core_module_section = ModuleSection(&core_module);
         component.section(&core_module_section);
 
-        let mut types = ComponentTypeSection::new();
-        component.section(&types);
-
-        let mut exports = ComponentExportSection::new();
-        exports.export("run", ComponentExportKind::Func, 0, None);
-
-
-        component.section(&exports);
+        component.section(&self.component_type_section);
+        component.section(&self.component_export_section);
 
         component
     }
