@@ -69,6 +69,14 @@ impl<'db> Cx<'db> {
         fn_index
     }
 
+    pub(crate) fn declare_canonical_fn(
+        &mut self,
+        _function: SymFunction<'db>,
+        _generics: Vec<SymGenericTerm<'db>>,
+    ) -> FnIndex {
+        todo!()
+    }
+
     pub(crate) fn codegen_fn(&mut self, FnKey(function, generics): FnKey<'db>) {
         let db = self.db;
 

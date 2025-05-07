@@ -50,16 +50,18 @@ impl<'db> Cx<'db> {
         function: SymFunction<'db>,
         generics: Vec<SymGenericTerm<'db>>,
     ) -> wasm_encoder::Module {
-        let index = self.declare_fn(function, generics);
+        let index = self.declare_fn(function, generics.clone());
         while let Some(item) = self.codegen_queue.pop() {
             match item {
                 CodegenQueueItem::Function(fn_key) => self.codegen_fn(fn_key),
             }
         }
 
+        let canonical_index = self.declare_canonical_fn(function, generics.clone());
+
         let name = function.name(self.db).text(self.db);
         self.export_section.export(name, ExportKind::Func, index.0);
-        self.component_export_section.export(name, ComponentExportKind::Func, index.0, None);
+        self.component_export_section.export(name, ComponentExportKind::Func, canonical_index.0, None);
 
         let mut module = wasm_encoder::Module::new();
         module.section(&self.type_section);
